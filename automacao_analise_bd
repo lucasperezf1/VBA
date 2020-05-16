@@ -1,0 +1,452 @@
+Attribute VB_Name = "Module3"
+
+Sub DIARIA()
+    
+    X_START = Now()
+    
+    Call Limpa_Copia
+    Call Analise
+    
+    X_STOP = Now()
+    DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+    If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+    If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+    If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+    MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+    
+
+End Sub
+
+
+Sub Limpa_Copia()
+
+    Sheets("DIARIA").Select
+
+    ULd = Range("A1048576").End(xlUp).Row
+    
+    For Each Data In Range("S2:S" & ULd)
+            Data.FormulaR1C1 = "=RC[-16]&""_""&RC[-14]"
+            Data.Offset(0, 1).FormulaR1C1 = _
+                "=IF(SUM(LEFT(RC[-19],2))<13,VALUE(MID(RC[-19],4,2)&""/""&LEFT(RC[-19],2)&""/""&MID(RC[-19],7,4)&"" ""&MID(RC[-19],13,2)&"":""&MID(RC[-19],16,2)&"":""&MID(RC[-19],19,2)),VALUE(RC[-19]))"
+            Data.Offset(0, 2).FormulaR1C1 = "=COUNTIF(DADOS!C[-20],RC[-18])"
+            Data.Offset(0, 3).FormulaR1C1 = "=IF(IFERROR(FIND(""X"",RC[-10]),0)>0,1,0)"
+            Data.Offset(0, 4).FormulaR1C1 = _
+                "=IF(COUNTIFS(POSICOES!C[-4],RC[-4],POSICOES!C[-17],IF(RC[-17]=""V"",""C"",""V""))>0,1,0)"
+  
+    Next
+    
+    'coloca a data no formato de texto
+    
+
+        
+    Range("T2:T" & ULd).Select
+    Selection.Copy
+    Range("A2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Application.CutCopyMode = False
+    Selection.NumberFormat = "m/d/yyyy"
+    
+    ActiveWorkbook.Worksheets("DIARIA").AutoFilter.Sort.SortFields.Clear
+    ActiveWorkbook.Worksheets("DIARIA").AutoFilter.Sort.SortFields.Add2 Key:= _
+        Range("A1:A" & ULd), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption _
+        :=xlSortNormal
+    With ActiveWorkbook.Worksheets("DIARIA").AutoFilter.Sort
+        .Header = xlYes
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
+        
+    'unhide nas colunas
+
+    Columns("A:W").Select
+    Selection.EntireColumn.Hidden = False
+    
+    'verifica se tem algum ativo "nao usual" movimentando que nao seja CR ou CS
+    
+    With Sheets("Aloca��o")
+        For Each C In Range("E2:E" & ULd)
+            If C = .Cells(17, 3).Value Or C = .Cells(20, 3).Value Then
+                If C.Offset(0, 13).Value <> "CR" And C.Offset(0, 13).Value <> "CS" Then
+                    MsgBox "VERIFICAR ATIVO:" & C
+                End If
+            End If
+        Next
+    End With
+    
+    'limpa todos os F de acoes fracionadas e coloca HB nos rotulos
+    
+    For Each F In Range("E2:E" & ULd)
+        If Right(F, 1) = "F" Then F.Value = Left(F, Len(F) - 1)
+        If F.Offset(0, 13).Value <> "FIN" And F.Offset(0, 13).Value <> "CR" And F.Offset(0, 13).Value <> "CS" _
+            And F.Offset(0, 13).Value <> "SW" And F.Offset(0, 13).Value <> "ES" And F.Offset(0, 13).Value <> "fin" _
+            And F.Offset(0, 13).Value <> "cr" And F.Offset(0, 13).Value <> "cs" And F.Offset(0, 13).Value <> "sw" _
+            And F.Offset(0, 13).Value <> "es" Then F.Offset(0, 13).Value = "HB"
+            F.Offset(0, 14).FormulaR1C1 = "=RC[-16]&""_""&RC[-14]"
+            F.Offset(0, 15).FormulaR1C1 = _
+                "=IF(SUM(LEFT(RC[-19],2))<13,VALUE(MID(RC[-19],4,2)&""/""&LEFT(RC[-19],2)&""/""&MID(RC[-19],7,4)&"" ""&MID(RC[-19],13,2)&"":""&MID(RC[-19],16,2)&"":""&MID(RC[-19],19,2)),VALUE(RC[-19]))"
+            F.Offset(0, 16).FormulaR1C1 = "=COUNTIF(DADOS!C[-20],RC[-18])"
+            F.Offset(0, 17).FormulaR1C1 = "=IF(IFERROR(FIND(""X"",RC[-10]),0)>0,1,0)"
+            F.Offset(0, 18).FormulaR1C1 = _
+                "=IF(COUNTIFS(POSICOES!C[-4],RC[-4],POSICOES!C[-17],IF(RC[-17]=""V"",""C"",""V""))>0,1,0)"
+    Next
+    
+    'elimina daytrades
+    
+    For D = 2 To ULd
+        K = Cells(D, 19).Value
+        For D2 = 2 To ULd
+            L = Cells(D2, 19).Value
+            If K = L And D <> D2 Then
+                If Cells(D, 6).Value = "C" And Cells(D2, 6).Value = "V" Or Cells(D, 6).Value = "V" And Cells(D2, 6).Value = "C" Then
+                    If Cells(D, 9).Value > Cells(D2, 9).Value Then
+                        Cells(D, 9).Value = Cells(D, 9).Value - Cells(D2, 9).Value
+                        Cells(D2, 9).Value = 0
+                    ElseIf Cells(D, 9).Value = Cells(D2, 9).Value Then
+                        Cells(D, 9).Value = 0
+                        Cells(D2, 9).Value = 0
+                    Else
+                        Cells(D2, 9).Value = Cells(D2, 9).Value - Cells(D, 9).Value
+                        Cells(D, 9).Value = 0
+                    End If
+                End If
+            End If
+        Next
+    Next
+     
+     
+     'elimina FIIs e opcoes fora do Financiamento
+    
+    For g = 2 To ULd
+        J = Cells(g, 5).Value
+        If Len(J) >= 6 And Cells(g, 18).Value <> "FIN" Then
+            With Sheets("DADOS")
+                ULc = .Range("I1048576").End(xlUp).Row
+                For Each UNITS In .Range("I2:I" & ULc)
+                    If J = UNITS Then Exit For
+                    If UNITS.Row = ULc Then
+                        Rows(g & ":" & g).Select
+                        Selection.Delete Shift:=xlUp
+                        g = g - 1
+                    End If
+                Next
+            End With
+        End If
+    Next
+
+    'verifica se tem alguma carteira boletada de cliente que nao esta na base de dados
+    
+    With Sheets("DADOS")
+        ULda = .Range("A1048576").End(xlUp).Row
+        For Each C In Range("C2:C" & ULd)
+            If C.Offset(0, 15).Value = "CR" Or C.Offset(0, 15).Value = "CS" Or C.Offset(0, 15).Value = "ES" _
+                Or C.Offset(0, 15).Value = "SW" Or C.Offset(0, 15).Value = "FIN" Then
+                For Each D In .Range("A2:A" & ULda)
+                    If D = C Then
+                        Exit For
+                    End If
+                    If D.Row = ULda Then
+                        D.Offset(1, 0).Value = C.Value
+                        D.Offset(1, 1).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-1],C[9]:C[11],3,FALSE),""ATUALIZAR BASE"")"
+                        D.Offset(1, 2).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-2],C11:C16,2,FALSE),""ATUALIZAR BASE"")"
+                        D.Offset(1, 3).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-3],C11:C16,5,FALSE),""ATUALIZAR BASE"")"
+                        D.Offset(1, 4).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-4],C11:C16,4,FALSE),""ATUALIZAR BASE"")"
+                        'MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+                    End If
+                Next
+            End If
+        
+        Next
+    End With
+        
+    'unhide nas colunas
+    
+    
+    Sheets("POSICOES").Select
+    Columns("A:U").Select
+    Selection.EntireColumn.Hidden = False
+    
+    'filtra ordens executadas de clientes da carteira de MV e que ainda nao negociaram o papel
+    
+    Sheets("DIARIA").Select
+    ActiveSheet.Range("$A$1:$W$1005").AutoFilter Field:=21, Criteria1:="1"
+    ActiveSheet.Range("$A$1:$W$1005").AutoFilter Field:=22, Criteria1:="1"
+    ActiveSheet.Range("$A$1:$W$1005").AutoFilter Field:=23, Criteria1:="0"
+    ul = Range("A1048576").End(xlUp).Row
+    
+    'copia essas ordens para a aba de posicoes
+    
+    If ul > 1 Then
+        Range("A2:S" & ul).SpecialCells(xlCellTypeVisible).Select
+        Selection.Copy
+        Sheets("POSICOES").Select
+        UL1 = Range("C1048576").End(xlUp).Row
+        Range("A" & UL1 + 1).Select
+        ActiveSheet.Paste
+    End If
+   
+    'precifica acao e valor total da linha / contabiliza receita por produto dentro da aba de receita
+   
+    UL2 = Range("A1048576").End(xlUp).Row
+    With Sheets("RECEITAS")
+        UL3 = .Range("A1048576").End(xlUp).Row
+        For Each ID2 In Range("V" & UL1 + 1 & ":V" & UL2)
+            ID2.FormulaR1C1 = "=profitchart|cot!" & ID2.Offset(0, -17).Value & ".FEC"
+            ID2.Offset(0, 1).FormulaR1C1 = "=RC[-1]*RC[-14]"
+            ID2.Offset(0, 2).Value = ID2.Offset(0, -11).Value
+            ID2.Offset(0, 3).FormulaR1C1 = "=RC[-1]*RC[-16]"
+            ID2.Offset(0, 4).FormulaR1C1 = "=IF(RC[-20]=""C"",RC[-17],-RC[-17])"
+            If ID2.Offset(0, -4).Value = "CR" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("D" & UL3 + 1).Value = ID2.Offset(0, -11).Value * ID2.Offset(0, -13).Value * 0.00375
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+            End If
+            If ID2.Offset(0, -4).Value = "CS" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("E" & UL3 + 1).Value = ID2.Offset(0, -11).Value * ID2.Offset(0, -13).Value * 0.00375
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+            End If
+            If ID2.Offset(0, -4).Value = "FIN" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("F" & UL3 + 1).Value = ID2.Offset(0, -11).Value * ID2.Offset(0, -13).Value * 0.00375
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+            End If
+            If ID2.Offset(0, -4).Value = "SW" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("G" & UL3 + 1).Value = ID2.Offset(0, -11).Value * ID2.Offset(0, -13).Value * 0.00375
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+            End If
+            If ID2.Offset(0, -4).Value = "HB" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("H" & UL3 + 1).Value = 2.625
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+             End If
+            If ID2.Offset(0, -4).Value = "ES" Then
+                .Range("A" & UL3 + 1).Value = ID2.Offset(0, -19).Value
+                .Range("B" & UL3 + 1).Value = ID2.Offset(0, -21).Value
+                .Range("I" & UL3 + 1).Value = 0
+                .Range("C" & UL3 + 1).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+                UL3 = UL3 + 1
+            End If
+        Next
+    End With
+    
+    
+        
+    'unhide nas colunas
+    
+    Sheets("ANALISE").Select
+    Columns("A:U").Select
+    Selection.EntireColumn.Hidden = False
+    Range("2:1048576").ClearContents
+
+    'filtra ordens executadas de clientes da carteira de MV e que precisam ser analisadas e copia para abas onde serao analisadas
+
+    Sheets("DIARIA").Select
+    ActiveSheet.Range("$A$1:$W$1005").AutoFilter Field:=23, Criteria1:="1"
+    ul = Range("A1048576").End(xlUp).Row
+    
+    If ul > 1 Then
+        Range("A2:S" & ul).SpecialCells(xlCellTypeVisible).Select
+        Selection.Copy
+        Sheets("ANALISE").Select
+        Range("A2").Select
+        ActiveSheet.Paste
+    End If
+    
+    'unhide nas colunas
+    
+    Sheets("DIARIA").Select
+    ActiveSheet.ShowAllData
+    Range("A2:R1048576").ClearContents
+    Sheets("ANALISE").Select
+
+
+End Sub
+
+Sub Analise()
+    
+   
+    'comeca o primeiro loop percorrendo na aba analise
+    
+    Sheets("ANALISE").Select
+    ULa = Range("A1048576").End(xlUp).Row
+    For Each IdA In Range("S2:S" & ULa)
+        
+        With Sheets("Posicoes")
+
+            ULp = .Range("A1048576").End(xlUp).Row
+            
+    'comeca o segundo loop fazendo a comparacao com a planilha de posicoes. Neste momento vefica-se se o ID e o mesmo, se nao existe data na coluna de fechamento e se o C/V sao inversos
+            
+            For Each IdP In .Range("S2:S" & ULp)
+                If IdA.Value = IdP.Value And IdP.Offset(0, 1).Value = "" Then
+                    If IdA.Offset(0, -13).Value = "C" And IdP.Offset(0, -13).Value = "V" Then
+                        
+                        w = IdA.Row
+                        Z = IdP.Row
+                    
+                    'caso as quantidades compradas e vendidas sejam iguais
+                        
+                        If IdA.Offset(0, -10).Value = IdP.Offset(0, -10).Value Then
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            IdA.Offset(0, -10).Value = 0
+                            Exit For
+                        End If
+                        
+                    'caso a quantidade da diaria seja menor do que a da posicao
+                        
+                        If IdA.Offset(0, -10).Value < IdP.Offset(0, -10).Value Then
+                            A = IdP.Offset(1, 0).Address
+                            .Range(A).EntireRow.Insert
+                            .Range("A" & IdP.Row & ":Z" & IdP.Row).Copy .Range("A" & IdP.Row + 1)
+            
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            OldIdP = IdP.Offset(0, -10).Value
+                            .Range("I" & IdP.Row + 1).Value = OldIdP - IdA.Offset(0, -10).Value
+                            IdP.Offset(0, -10).Value = IdA.Offset(0, -10).Value
+                            IdA.Offset(0, -10).Value = 0
+                            Exit For
+                        End If
+                        
+                    'caso a quantidade da diaria seja maior do que a da posicao
+                        
+                        If IdA.Offset(0, -10).Value > IdP.Offset(0, -10).Value Then
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            IdA.Offset(0, -10).Value = IdA.Offset(0, -10).Value - IdP.Offset(0, -10).Value
+                        End If
+                    
+                    End If
+                    
+                    'depois de percorrido toda a aba de posicao, caso ainda tenho saldo na linha da analise, este e inserido no final
+                
+                    If IdA.Offset(0, -10).Value > 0 And IdP.Row = ULp Then
+                        Range("A" & IdA.Row & ":S" & IdA.Row).Copy .Range("A" & ULp + 1)
+                        .Range("V" & IdP.Row & ":Z" & IdP.Row).Copy .Range("V" & ULp + 1)
+                        IdA.Offset(0, -10).Value = 0
+                    End If
+                             
+                    
+                    'mesma analise acima porem com operacao de C/V inversa
+                    
+                    If IdA.Offset(0, -13).Value = "V" And IdP.Offset(0, -13).Value = "C" Then
+                 
+                        w = IdA.Row
+                        Z = IdP.Row
+                      
+                        If IdA.Offset(0, -10).Value = IdP.Offset(0, -10).Value Then
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            IdA.Offset(0, -10).Value = 0
+                            Exit For
+                        End If
+                        
+                        If IdA.Offset(0, -10).Value < IdP.Offset(0, -10).Value Then
+                            A = IdP.Offset(1, 0).Address
+                            .Range(A).EntireRow.Insert
+                            .Range("A" & IdP.Row & ":Z" & IdP.Row).Copy .Range("A" & IdP.Row + 1)
+            
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            OldIdP = IdP.Offset(0, -10).Value
+                            .Range("I" & IdP.Row + 1).Value = OldIdP - IdA.Offset(0, -10).Value
+                            IdP.Offset(0, -10).Value = IdA.Offset(0, -10).Value
+                            IdA.Offset(0, -10).Value = 0
+                            Exit For
+                        End If
+
+                        If IdA.Offset(0, -10).Value > IdP.Offset(0, -10).Value Then
+                            IdP.Offset(0, 1).Value = IdA.Offset(0, -18).Value
+                            IdP.Offset(0, 2).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 3).Value = IdA.Offset(0, -8).Value
+                            IdP.Offset(0, 4).FormulaR1C1 = "=RC[-1]*RC[-14]"
+                            IdA.Offset(0, -10).Value = IdA.Offset(0, -10).Value - IdP.Offset(0, -10).Value
+                        
+                        End If
+                       
+                    End If
+                    
+                End If
+            
+                'depois de percorrido toda a aba de posicao, caso ainda tenho saldo na linha da analise, este e inserido no final
+            
+                If IdA.Offset(0, -10).Value > 0 And IdP.Row = ULp Then
+                    Range("A" & IdA.Row & ":S" & IdA.Row).Copy .Range("A" & ULp + 1)
+                    .Range("V" & IdP.Row & ":Z" & IdP.Row).Copy .Range("V" & ULp + 1)
+                    IdA.Offset(0, -10).Value = 0
+                    'ANALISAR PQ AS DUAS LINHAS ABAIXO NAO ESTAO NA C/V INVERSA
+                    IdP.Offset(0, 5).Value = IdP.Offset(0, 5).Value
+                    IdP.Offset(0, 6).FormulaR1C1 = "=RC[-1]*RC[-16]"
+                End If
+            
+            Next
+        
+        End With
+    
+    Next
+    
+    'hide nas colunas com informacoes nao utilizadas
+    
+    Sheets("ANALISE").Select
+    Range("M:R,J:J,G:H,D:D,B:B").Select
+    Selection.EntireColumn.Hidden = True
+    Sheets("DIARIA").Select
+    Range("M:Q,J:J,G:H,D:D,B:B").Select
+    Selection.EntireColumn.Hidden = True
+    Sheets("POSICOES").Select
+
+
+End Sub
+
+Sub estruturadas()
+
+'filtrar a coluna K da planilha DIARIA.EST!
+
+'copiar os codigos da coluna A da aba de DIARIA.EST! e colar na coluna C da aba POSICOES!
+
+'copiar os ativos da coluna C da aba DIARIA.EST! e colar na coluna E da aba POSICOES!
+
+'na coluna F (TIPO) da aba POSICOES! preencher com (-) ate a ultima linha que possui conteudo colado
+
+'copiar os pre�os da coluna D da aba DIARIA.EST! e colar na coluna K da aba POSICOES!
+
+'copiar as quantidades da coluna G da aba DIARIA.EST! e colar na coluna I da aba POSICOES!
+
+
+'na coluna data e hora (A) na aba posi��es! adicionar formula =hoje() e arrastar a ultima linha que possui conteudo colado
+'na sequencia colar valores
+
+
+'
+
+
+End Sub
+
+
+
+

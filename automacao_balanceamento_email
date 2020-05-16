@@ -1,0 +1,577 @@
+Attribute VB_Name = "M�dulo2"
+Sub rebalanceamento()
+    'limpa todos os dados
+    Sheets("Balanceamento").Select
+        lc = Range("C5").End(xlToRight).Column
+        lr = Range("C5").End(xlDown).Row
+    
+    If lc < 5000 Or lr < 5000 Then 'para nao dar erro(planilha ja esta limpa)
+        Range(Cells(4, 2), Cells(lr, lc + 1)).Select
+        Selection.ClearContents
+    End If
+    
+    Range("B5").Formula = "Clientes" 'deixa referencia de clientes
+        
+        ult_colu = Range("aI5").End(xlToRight).Column 'define segunda tabela para limpar
+        ult_row = Range("ah6").End(xlDown).Row
+    
+    If ult_colu < 5000 Or ult_row < 5000 Then 'para nao dar erro(planilha ja esta limpa)
+        Range(Cells(5, 2), Cells(lr, lc + 1)).Select
+        Selection.ClearContents
+        Range(Cells(4, 34), Cells(ult_row, ult_colu)).Select
+        Selection.ClearContents
+     End If
+     
+     Range("AH5").Formula = "Clientes" 'deixa referencia de clientes
+     Range("B5").Formula = "Clientes"
+          
+          
+       
+    
+    'coloca pre�os nos ativos
+    Sheets("Posi��o estrat�gias").Select
+    uc = Range("C5").End(xlToRight).Column
+    For F = 3 To uc - 1
+        Cells(3, F).Formula = "=profitchart|cot!" & Cells(5, F) & ".ULT"
+    Next
+    
+    'limpa mudan�a caso exista
+    Clean_uc = Range(Cells(3, uc - 1), Cells(3, uc - 1)).End(xlToRight).Column
+    Cells(6, Clean_uc + 2).Select
+    clean_ur = Cells(6, Clean_uc + 2).End(xlDown).Row
+                                     
+    Range(Cells(3, uc + 1), Cells(clean_ur, Clean_uc + 2)).Select
+    Selection.ClearContents
+    
+
+    
+    'copia os ativos em aberto para o balanceamento- posi��o estrategia)
+    Range(Cells(5, 3), Cells(5, uc - 1)).Select
+    Selection.Copy
+    Sheets("Balanceamento").Select
+    Range("C5").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    UC2 = Range("C5").End(xlToRight).Column
+    
+    
+'Decide se vai atualizar os ativos
+    With Sheets("Posi��o Estrat�gias")
+    If .Range("C1").Value = "CR" Then
+    Call AtualizaCR
+    
+     ElseIf .Range("C1") = "CS" Then
+     Call ATUALIZARCS
+                 
+     Else: MsgBox ("ERROR! carteira selecionada errada")
+        End If
+   
+    End With
+'copia os novos ativos para a parte de aloca��o
+    Sheets("Balanceamento").Select
+   With Sheets("Aloca��o")
+        UC3 = .Range("C9").End(xlToRight).Column
+        For Each NOVO In Range(.Cells(9, 3), .Cells(9, UC3))
+            For ATUAL = 3 To UC2 + 1
+                x = Cells(5, ATUAL).Value
+                If NOVO = Cells(5, ATUAL).Value Then Exit For
+                If Cells(5, ATUAL).Value = "" Then
+                    Cells(5, ATUAL).Value = NOVO
+                    UC2 = UC2 + 1
+                End If
+            Next
+        Next
+    End With
+            
+        
+
+'copia formas para saber aloca��o dos novos ativos + antigos ativos
+    Range("C4").FormulaR1C1 = _
+        "=IFERROR(INDEX(Aloca��o!R8C3:R8C" & UC3 & ",MATCH(Balanceamento!R5C,Aloca��o!R9C3:R9C" & UC3 & ",0)),0)"
+    Range("C4").Select
+    Selection.Copy
+    Range(Cells(4, 3), Cells(4, UC2)).Select
+    ActiveSheet.Paste
+    
+    
+'Copia "novos ativos" para as opera��es
+
+    Sheets("Balanceamento").Select
+    Range(Cells(5, 3), Cells(5, UC2)).Select
+    Selection.Copy
+    Range("AI5").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+        
+'loop para colocar pre�o nos antigos ativos
+    UC4 = Range("AI5").End(xlToRight).Column
+    For F = 35 To UC4
+        Cells(4, F).Formula = "=profitchart|cot!" & Cells(5, F) & ".ULT"
+    Next
+
+
+' Copia clientes das posi��es para planilha de balanceamento
+'
+    Sheets("Posi��o estrat�gias").Select
+    UL3 = Range("B6").End(xlDown).Row
+    Range("B6", Cells(UL3 - 1, 2)).Select
+    Selection.Copy
+    Sheets("Balanceamento").Select
+    Range("B6").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Range("AH6").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+ 
+ 
+
+'Identifica ultima linha e coluna dentro de posi��o
+
+    Sheets("Posi��o Estrat�gias").Select
+    ult_col = Range("C5").End(xlToRight).Column
+    ult_lin = Range("B6").End(xlDown).Row
+    
+'aplica a formula de valor total das carteiras alocadas
+
+    Cells(6, ult_col + 1).Select
+    
+    ActiveCell.FormulaR1C1 = "=SUMPRODUCT(R3C3:R3C" & ult_col - 1 & ",RC[-" & ult_col - 2 & "]:RC[-2])+VLOOKUP(RC[-" & ult_col - 1 & "],'Saldo Extra'!C1:C2,2,FALSE)"
+    Cells(6, ult_col + 1).Select
+    Selection.Copy
+    Range(Cells(6, ult_col + 1), Cells(ult_lin, ult_col + 1)).Select
+    ActiveSheet.Paste
+ 
+ 
+ 
+'   'Local das formulas em balanceamento da porcentagem atual dos ativos
+    Sheets("Posi��o estrat�gias").Select
+    last_column = Range("C5").End(xlToRight).Column
+    last_line = Range("B6").End(xlDown).Row
+    Sheets("Balanceamento").Select
+
+'formula de porcentagem atual de cada cliente nos ativos em posi��o
+        Cells(6, 3).FormulaR1C1 = _
+            "=IFERROR(INDEX('Posi��o estrat�gias'!R6C3:R" & last_line & "C" & last_column & ", MATCH(Balanceamento!RC2,'Posi��o estrat�gias'!R6C2:R" & last_line & "C2,0),MATCH(Balanceamento!R5C,'Posi��o estrat�gias'!R5C3:R5C" & last_column & ",0))*INDEX('Posi��o estrat�gias'!R3C3:R3C" & last_column - 1 & ",MATCH(Balanceamento!R5C,'Posi��o estrat�gias'!R5C3:R5C" & last_column - 1 & ",0))/INDEX('Posi��o estrat�gias'!R6C" & last_column + 1 & ":R" & last_line & "C" & last_column + 1 & ",MATCH(Balanceamento!RC2,'Posi��o estrat�gias'!R6C2:R" & last_line & "C2,0)),0)"
+
+
+'copia a formula para as celulas
+   Range("C6").Select
+    Selection.Copy
+    Sheets("Balanceamento").Select
+    last_column1 = Range("C5").End(xlToRight).Column
+    last_line1 = Range("B6").End(xlDown).Row
+    Range(Cells(6, 3), Cells(last_line1, last_column1)).Select
+    ActiveSheet.Paste
+    
+'Checa o total se est� igual a 100%
+    
+    Dim Col_Letter As String
+    Dim vArr
+        vArr = Split(Cells(1, last_column1).Address(True, False), "$")
+        Col_Letter = vArr(0)
+    
+    Cells(6, last_column1 + 1).Formula = "=SUM(C6:" & Col_Letter & "6)"
+    Cells(6, last_column1 + 1).Select
+    Selection.Copy
+    Range(Cells(6, last_column1 + 1), Cells(last_line1, last_column1 + 1)).Select
+    ActiveSheet.Paste
+
+'CRIAR QUANTIDADES DE VENDAS E COMPRAS
+    With Sheets("posi��o estrat�gias")
+    uc7 = .Range("C5").End(xlToRight).Column
+    End With
+    Range("AI6").Select
+    ActiveCell.FormulaR1C1 = _
+        "=(INDEX(R4C3:R4C" & last_column1 & ",1,MATCH(R5C,R5C3:R5C" & last_column1 & ",0))-INDEX(R6C3:R" & last_line1 & "C" & last_column1 & ",MATCH(RC34,R6C2:R" & last_line1 & "C2,0),MATCH(R5C,R5C3:R5C" & last_column1 & ",0)))*INDEX('Posi��o estrat�gias'!R6C" & uc7 + 1 & ":R" & last_line1 & "C" & uc7 + 1 & ",MATCH(Balanceamento!RC34,'Posi��o estrat�gias'!R6C2:R" & last_line1 & "C2,0))/R4C"
+    Range("AI6").Select
+    Selection.Copy
+    ult_colu = Range("ai5").End(xlToRight).Column
+    Range(Cells(6, 35), Cells(last_line - 1, ult_colu)).Select
+    ActiveSheet.Paste
+    Cells(6, ult_colu + 1).Select
+    ActiveCell.FormulaR1C1 = "=SUMPRODUCT(R4C35:R4C" & ult_colu & ", RC35:RC" & ult_colu & ")"
+    Selection.Copy
+    Range(Cells(6, ult_colu + 1), Cells(last_line, ult_colu + 1)).Select
+    ActiveSheet.Paste
+    
+    
+
+ End Sub
+
+Sub formula_QTDS()
+'Definir Refer�ncias
+    Sheets("Balanceamento").Select
+    last_column1 = Range("C5").End(xlToRight).Column
+    last_line1 = Range("B6").End(xlDown).Row
+    
+'CRIAR QUANTIDADES DE VENDAS E COMPRAS
+    
+    With Sheets("posi��o estrat�gias")
+    uc7 = .Range("C5").End(xlToRight).Column
+    End With
+    Range("AI6").Select
+    ActiveCell.FormulaR1C1 = _
+        "=(INDEX(R4C3:R4C" & last_column1 & ",1,MATCH(R5C,R5C3:R5C" & last_column1 & ",0))-INDEX(R6C3:R" & last_line1 & "C" & last_column1 & ",MATCH(RC34,R6C2:R" & last_line1 & "C2,0),MATCH(R5C,R5C3:R5C" & last_column1 & ",0)))*INDEX('Posi��o estrat�gias'!R6C" & uc7 + 1 & ":R" & last_line1 & "C" & uc7 + 1 & ",MATCH(Balanceamento!RC34,'Posi��o estrat�gias'!R6C2:R" & last_line1 & "C2,0))/R4C"
+    Range("AI6").Select
+    Selection.Copy
+    ult_colu = Range("ai5").End(xlToRight).Column
+    Range(Cells(6, 35), Cells(last_line - 1, ult_colu)).Select
+    ActiveSheet.Paste
+    Cells(6, ult_colu + 1).Select
+    ActiveCell.FormulaR1C1 = "=SUMPRODUCT(R4C35:R4C" & ult_colu & ", RC35:RC" & ult_colu & ")"
+    Selection.Copy
+    Range(Cells(6, ult_colu + 1), Cells(last_line, ult_colu + 1)).Select
+    ActiveSheet.Paste
+End Sub
+Sub AtualizaCR()
+
+    Sheets("Aloca��o").Select
+    
+'encontrando ultima coluna da carteira
+
+    uc = Range("C17").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida caso a carteira atual seja maior
+    
+    UCClear = Range("C9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+   
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(8, 0).Value
+    Next
+    
+'copiando os % das acoes
+ 
+    For Each Z In Range(Cells(8, 3), Cells(8, uc))
+        Z.Value = Z.Offset(8, 0).Value
+    Next
+
+'limpando itens excendentes da carteira a ser substituida
+
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+       
+    Sheets("Balanceamento").Select
+End Sub
+Sub ATUALIZARCS()
+
+    Sheets("Aloca��o").Select
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("C20").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida
+    
+    UCClear = Range("C9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(11, 0).Value
+    Next
+    
+'copiando os % das acoes
+ 
+    For Each Z In Range(Cells(8, 3), Cells(8, uc))
+        Z.Value = Z.Offset(11, 0).Value
+    Next
+
+'limpando itens excendentes da carteira a ser substituida
+    
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+
+'colocando os pre�os das a��es
+ 
+       
+    For P = 3 To uc
+        Cells(7, P).Formula = "=profitchart|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+'colocando as formulas nas celulas
+   
+    Range(Cells(10, 3), Cells(10, uc)).FormulaR1C1 = "=R[-2]C*R5C3"
+    Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/R[-4]C,0)"
+    Range(Cells(12, 3), Cells(12, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/100,0)*100"
+    Range(Cells(13, 3), Cells(13, uc)).FormulaR1C1 = "=R[-2]C-R[-1]C"
+    Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+    
+    
+    Sheets("Aloca��o").Select
+    
+    
+End Sub
+
+
+Sub aplicar_margem_e_email()
+    
+  
+    'declarar variaveis
+    Sheets("Balanceamento").Select
+    last_column1 = Range("C5").End(xlToRight).Column
+    last_line = Range("B6").End(xlDown).Row
+    
+        
+    'check para margens antes de rebalanceamento
+        'limpeza de dados anteriores
+     If last_column1 > 5000 Or last_line > 5000 Then 'para nao dar erro(planilha ja esta limpa)
+        MsgBox ("Rode primeiro o rebalancemento")
+        GoTo fim
+    End If
+    'limpeza de dados anteriores
+     If last_column1 <> "" Or last_line + 2 <> "" Then 'para nao dar erro(planilha ja esta limpa)
+        Range(Cells(last_line + 2, 34), Cells(last_line + last_line + 2, last_column1 + last_column1 + 7)).Select
+        Selection.ClearContents
+    End If
+    
+ 
+    
+        'loop para acerto de margem
+    For t = 3 To last_column1
+    g = t + 32
+    If (Cells(4, t)) = 0 Then
+         
+         'copia ativos que est�o com a nova aloca��o =0
+            Range(Cells(6, g), Cells(last_line, g)).Select
+            Selection.Copy
+            Range(Cells(last_line + 3, g), Cells(last_line + 3, g)).Select
+            Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+                :=False, Transpose:=False
+           
+           
+        'coloca a formula para adequar a margem
+            Else
+                first_line = last_line + 2
+                new_last = last_line - 4 + last_line
+                Range(Cells(first_line + 1, g), Cells(first_line + 1, g)).Select
+                ActiveCell.FormulaR1C1 = _
+                    "=IF(R[" & -last_line + 3 & "]C>0,R[" & -last_line + 3 & "]C*(1-R1C53),R[" & -last_line + 3 & "]C*(1+R1C53))"
+                
+                Selection.Copy
+                Range(Cells(first_line + 1, g), Cells(new_last + 1, g)).Select
+                ActiveSheet.Paste
+                
+    End If
+    Next
+    
+    
+    'copia clientes para tabela de baixo
+    Range(Cells(6, 34), Cells(last_line, 34)).Copy
+    Cells(first_line + 1, 34).Select
+    ActiveSheet.Paste
+ 
+     'copia ativos para a tabela de baixo
+    Range(Cells(5, 35), Cells(5, g)).Copy
+    Cells(first_line, 35).Select
+    ActiveSheet.Paste
+    
+    'formata os n�meros e coloca nova aloca��o
+    Range(Cells(first_line + 1, 35), Cells(new_last + 1, g)).Select
+    Selection.Copy
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+                :=False, Transpose:=False
+    Selection.NumberFormat = "0"
+    
+    
+    'copia para a planilha de cima os ativos j� com margem
+    Selection.Copy
+    Range("AI6").Select
+    ActiveSheet.Paste
+    
+    'Copia a boleta para planilha separada
+    With Sheets("Posi��o Estrat�gias")
+    If .Range("C1").Value = "CR" Then
+          Range(Cells(first_line, 34), Cells(new_last + 1, g)).Copy
+          Sheets("Boleta CR").Select
+          Range("B2").Select
+          ActiveSheet.Paste
+          Sheets("Balanceamento").Select
+          
+    
+     ElseIf .Range("C1") = "CS" Then
+          Range(Cells(first_line, 34), Cells(new_last + 1, g)).Copy
+          Sheets("Boleta CS").Select
+          Range("B2").Select
+          ActiveSheet.Paste
+          Sheets("Balanceamento").Select
+          
+                 
+     Else: MsgBox ("ERROR! carteira selecionada errada")
+        End If
+   
+    End With
+    
+    
+    Range(Cells(first_line + 1, 35), Cells(new_last + 1, g)).Select
+    Selection.ClearContents
+    
+
+
+
+    
+'limpa dados_margem
+Range(Cells(last_line + 2, 34), Cells(last_line + last_line + 2, last_column1 + last_column1 + 7)).Select
+        Selection.ClearContents
+    
+ 'limpa dados email
+    lc2 = Cells(6, g + 5).End(xlToRight).Column
+    ll2 = Cells(6, g + 5).End(xlDown).Row
+    Range(Cells(5, g + 5), Cells(ll2, lc2)).Select
+        Selection.ClearContents
+    
+'DEFINE TAMANHO DA TABELA DE BALANCEAMENTO
+
+    numero_colu = g - 35
+'Formata os emails
+        Primeira_column = g + 5
+  'codigo dos clientes
+     Cells(6, g + 5).Formula = "Cod XP"
+     Range(Cells(6, 34), Cells(last_line, 34)).Copy
+     Cells(7, g + 5).Select
+     ActiveSheet.Paste
+   'nome dos clientes
+     Cells(6, g + 6).Formula = "Nome"
+     Cells(7, g + 6).Formula = "=VLOOKUP(Rc" & g + 5 & ",DADOS!R1C1:R600C9,2,FALSE)"
+
+    'email do assessor
+     Cells(6, g + 7).Formula = "Email Assessor"
+     Cells(7, g + 7).Formula = "=VLOOKUP(Rc" & g + 5 & ",DADOS!R1C1:R600C9,6,FALSE)"
+    
+    'email do cliente
+     Cells(6, g + 8).Formula = "Email Cliente"
+     Cells(7, g + 8).Formula = "=VLOOKUP(Rc" & g + 5 & ",DADOS!R1C1:R600C9,5,FALSE)"
+    
+    'PUXANDO FORMULAS
+     Range(Cells(7, g + 6), Cells(7, g + 8)).Copy
+     Range(Cells(7, g + 6), Cells(last_line + 1, g + 8)).Select
+     ActiveSheet.Paste
+         
+
+     'Mensagem final
+     Cells(6, g + 9).Formula = "MENSAGEM FINAL"
+     Cells(7, g + 9).Formula = "=CONCAT(""Prezado(a) "",RC" & g + 6 & ","" solicito a confirma��o das seguintes opera��es na sua conta XP "",RC" & g + 5 & ","":" & Chr(10) & """,RC[1]:RC[" & numero_colu + 1 & "],DADOS!R4C27)"
+     Cells(7, g + 9).Copy
+     Range(Cells(7, g + 9), Cells(last_line + 1, g + 9)).Select
+     ActiveSheet.Paste
+     
+     
+     'copia ativos
+     Range(Cells(5, 35), Cells(5, g)).Copy
+     Range(Cells(5, g + 10), Cells(5, g + 10)).Select
+     ActiveSheet.Paste
+        
+     'mensagem de cada ativo
+        'titulo da linha
+        Cells(6, g + 10).Formula = "=concat(""MENSAGEM "",R5C[" & -numero_colu - 10 & "])"
+        Cells(6, g + 10).Copy
+        Range(Cells(6, g + 10), Cells(6, g + 10 + numero_colu)).Select
+        ActiveSheet.Paste
+        
+        'Formula
+        
+        '_________________________________________________________ CODIGO ANTIGO(SUBSTITUIDO NA 'MENSAGEM FINAL)_______________
+        'Primeiro ativo
+                'Cells(7, g + 10).Formula = "=CONCAT(""Prezado(a) "",RC" & g + 6 & ","" solicito a confirma��o das seguintes opera��es na sua conta XP "",RC" & g + 5 & ","":" & Chr(10) & """,""" & Chr(10) & "" & Chr(10) & "Ativo: "",R5C,"" " & Chr(10) & "Natureza: "",IF(RC[" & -numero_colu - 10 & "]<0,""VENDA A VISTA"",""COMPRA A VISTA""),"" " & Chr(10) & "Quantidade: "",ABS(ROUNDUP(RC[" & -numero_colu - 10 & "],0)),"" " & Chr(10) & "Pre�o: A mercado " & Chr(10) & "Validade: At� Cancelar" & Chr(10) & "" & Chr(10) & "" & Chr(10) & "" & Chr(10) & """)"
+                'Cells(7, g + 10).Copy
+                'Range(Cells(7, g + 10), Cells(last_line + 1, g + 10)).Select
+                'ActiveSheet.Paste
+        '_______________________________________________________________________________________________________________________
+        
+        
+        'ativos
+        Cells(7, g + 10).Formula = "=CONCAT(""Ativo: "",R5C,"" " & Chr(10) & "Natureza: "",IF(R[-1]C[" & -numero_colu - 10 & "]<0,""VENDA A VISTA"",""COMPRA A VISTA""),"" " & Chr(10) & "Quantidade: "",ABS(ROUNDUP(R[-1]C[" & -numero_colu - 10 & "],0)),"" " & Chr(10) & "Pre�o: A mercado " & Chr(10) & "Validade: At� Cancelar" & Chr(10) & "" & Chr(10) & "" & Chr(10) & "" & Chr(10) & """)"
+        Cells(7, g + 10).Copy
+        Range(Cells(7, g + 10), Cells(last_line + 1, g + 10 + numero_colu)).Select
+        ActiveSheet.Paste
+       
+
+
+'para encerrar a macro
+fim:
+
+      End Sub
+     Sub mandar_email()
+    
+    g = Range("ah5").End(xlToRight).Column
+        
+    Dim OutlookApp As Object
+    Dim OutlookMail As Object
+    Set OutlookApp = CreateObject("Outlook.Application")
+    Set OutlookMail = OutlookApp.CreateItem(0)
+    Dim email_cliente As String
+    Dim Mensagem As String
+    Sheets("Balanceamento").Select
+    x = Cells(7, g + 9).Column
+    ul = Cells(7, g + 9).End(xlDown).Row
+    For i = 7 To ul
+        email_cliente = Sheets("Balanceamento").Cells(i, g + 8)
+        If email_cliente <> "" Then
+            Mensagem = Sheets("Balanceamento").Cells(i, g + 9)
+            assessor = Sheets("Balanceamento").Cells(i, g + 7)
+            Set OutlookApp = CreateObject("Outlook.Application")
+    Set OutlookMail = OutlookApp.CreateItem(0)
+    With OutlookMail
+        .Display
+        .To = email_cliente
+        .CC = assessor
+        .BCC = ""
+        .Subject = "[RIVA] - Confirma��o de ordem "
+        .Body = Mensagem
+        '.Send
+    End With
+    Set OutlookMail = Nothing
+    Set OutlookApp = Nothing
+            
+            
+        End If
+    Next i
+'__________________________________________________________
+    
+    End Sub
+
+Sub retirar0_email()
+U = Range("AH5").End(xlToRight).Column
+numero_colu = U - 35
+Range(Cells(7, U + 10), Cells(last_line + 1, U + 10 + numero_colu)).Select
+End Sub
+
+
+
+

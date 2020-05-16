@@ -1,0 +1,920 @@
+Attribute VB_Name = "Module1"
+
+Sub CARTEIRA_VALOR()
+Attribute CARTEIRA_VALOR.VB_ProcData.VB_Invoke_Func = " \n14"
+
+    X_START = Now()
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("C17").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida caso a carteira atual seja maior
+    
+    UCClear = Range("C9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+   
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(8, 0).Value
+    Next
+    
+'copiando os % das acoes
+ 
+    For Each Z In Range(Cells(8, 3), Cells(8, uc))
+        Z.Value = Z.Offset(8, 0).Value
+    Next
+
+'limpando itens excendentes da carteira a ser substituida
+
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+    
+
+'colocando os pre�os das a��es
+ 
+       
+    For P = 3 To uc
+       Cells(7, P).Formula = "=profitchart|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+'colocando as formulas nas celulas
+   
+    Range(Cells(10, 3), Cells(10, uc)).FormulaR1C1 = "=R[-2]C*R5C3"
+    Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/R[-4]C,0)"
+    Range(Cells(12, 3), Cells(12, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/100,0)*100"
+    Range(Cells(13, 3), Cells(13, uc)).FormulaR1C1 = "=R[-2]C-R[-1]C"
+    Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+
+    
+'conferindo se o est� 100% alocado nas a��es e caso nao esteja informando ao usuario
+    
+    With Range("A1")
+         .FormulaR1C1 = "=IF(OR(SUM(R8)<>1,SUM(R10)<>R5C3),""ERRO"",""OK"")"
+         x = .Value
+         .ClearContents
+    End With
+    
+If x <> "OK" Then MsgBox ("ERRO !!! Pecentuais e Valores n�o est�o corretos!"), vbCritical: Exit Sub
+
+'mensagem com o valor total da boleta
+        
+    R = Range(Cells(14, 3), Cells(14, uc))
+    RESULTADO = WorksheetFunction.Sum(R)
+
+    MsgBox ("VALOR TOTAL DA BOLETA: R$ " & RESULTADO)
+
+'verificar se ja � cliente e se nao for acrescenta na aba de dados
+
+With Sheets("DADOS")
+
+    UL3 = .Range("A1048576").End(xlUp).Row
+        
+        For Each K In Range(.Cells(2, 1), .Cells(UL3, 1))
+            If Range("C4").Value = K Then Exit For
+            If K.Row = UL3 Then
+                K.Offset(1, 0).Value = Range("C4").Value
+                K.Offset(1, 1).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-1],C[9]:C[11],3,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 2).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-2],C11:C16,2,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 3).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-3],C11:C16,5,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 4).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-4],C11:C16,4,FALSE),""ATUALIZAR BASE"")"
+                MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+            End If
+        Next
+End With
+
+
+
+'transferindo as informacoes para a aba padrao bull
+
+With Sheets("Padrao_Bull")
+    
+    .Range("A2:R1048576").ClearContents
+    
+    For Each C In Range(Cells(9, 3), Cells(9, uc))
+        If C.Offset(-1, 0).Value <> 0 Then
+           If C.Offset(3, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(3, 0).Value
+              .Range("C" & ul).Value = C.Value
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              .Range("O" & ul).FormulaR1C1 = "=RC[-13]*RC[-7]"
+
+           End If
+           If C.Offset(4, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(4, 0).Value
+              .Range("C" & ul).Value = C.Value & "F"
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              .Range("O" & ul).FormulaR1C1 = "=RC[-13]*RC[-7]"
+              
+           End If
+        End If
+    Next
+
+    Sheets("Padrao_Bull").Select
+    ul = .Range("A1048576").End(xlUp).Row
+    Range("A1:O" & ul).Select
+    Selection.Copy
+    Workbooks.Add
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    
+    ActiveWorkbook.SaveAs Filename:="C:\Users\Riva Investimentos\Desktop\" & Range("A2").Text & ".csv" _
+        , FileFormat:=xlCSVUTF8, CreateBackup:=False
+
+End With
+     
+X_STOP = Now()
+DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+
+
+End Sub
+
+Sub SMALL()
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("C20").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida
+    
+    UCClear = Range("C9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(11, 0).Value
+    Next
+    
+'copiando os % das acoes
+ 
+    For Each Z In Range(Cells(8, 3), Cells(8, uc))
+        Z.Value = Z.Offset(11, 0).Value
+    Next
+
+'limpando itens excendentes da carteira a ser substituida
+    
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+
+'colocando os pre�os das a��es
+ 
+       
+    For P = 3 To uc
+        Cells(7, P).Formula = "=profitCHART|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+'colocando as formulas nas celulas
+   
+    Range(Cells(10, 3), Cells(10, uc)).FormulaR1C1 = "=R[-2]C*R5C3"
+    Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/R[-4]C,0)"
+    Range(Cells(12, 3), Cells(12, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/100,0)*100"
+    Range(Cells(13, 3), Cells(13, uc)).FormulaR1C1 = "=R[-2]C-R[-1]C"
+    Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+    
+'conferindo se o est� 100% alocado nas a��es e caso nao esteja informando ao usuario
+    
+    With Range("A1")
+         .FormulaR1C1 = "=IF(OR(SUM(R8)<>1,SUM(R10)<>R5C3),""ERRO"",""OK"")"
+         x = .Value
+         .ClearContents
+    End With
+    
+If x <> "OK" Then MsgBox ("ERRO !!! Pecentuais e Valores n�o est�o corretos!"), vbCritical: Exit Sub
+
+'mensagem com o valor total da boleta
+        
+    R = Range(Cells(14, 3), Cells(14, uc))
+    RESULTADO = WorksheetFunction.Sum(R)
+
+    MsgBox ("VALOR TOTAL DA BOLETA: R$ " & RESULTADO)
+
+
+'verificar se ja � cliente e se nao for acrescenta na aba de dados
+
+With Sheets("DADOS")
+
+    UL3 = .Range("A1048576").End(xlUp).Row
+        
+        For Each K In Range(.Cells(2, 1), .Cells(UL3, 1))
+            If Range("C4").Value = K Then Exit For
+            If K.Row = UL3 Then
+                K.Offset(1, 0).Value = Range("C4").Value
+                K.Offset(1, 1).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-1],C[9]:C[11],3,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 2).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-2],C11:C16,2,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 3).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-3],C11:C16,5,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 4).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-4],C11:C16,4,FALSE),""ATUALIZAR BASE"")"
+                MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+            End If
+        Next
+End With
+
+'transferindo as informacoes para a aba padrao bull
+
+With Sheets("Padrao_Bull")
+    
+    .Range("A2:R1048576").ClearContents
+    
+    For Each C In Range(Cells(9, 3), Cells(9, uc))
+        If C.Offset(-1, 0).Value <> 0 Then
+           If C.Offset(3, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(3, 0).Value
+              .Range("C" & ul).Value = C.Value
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+           End If
+           If C.Offset(4, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(4, 0).Value
+              .Range("C" & ul).Value = C.Value & "F"
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              
+           End If
+        End If
+    Next
+
+
+        
+    Sheets("Padrao_Bull").Select
+    ul = .Range("A1048576").End(xlUp).Row
+    Range("A1:N" & ul).Select
+    Selection.Copy
+    Workbooks.Add
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+    ActiveWorkbook.SaveAs Filename:="C:\Users\Riva Investimentos\Desktop\" & Range("A2").Text & ".csv" _
+        , FileFormat:=xlCSVUTF8, CreateBackup:=False
+ 
+End With
+   
+X_STOP = Now()
+DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+   
+
+End Sub
+
+
+Sub DIVIDENDOS()
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("C23").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida
+    
+    UCClear = Range("C9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(14, 0).Value
+    Next
+    
+'copiando os % das acoes
+ 
+    For Each Z In Range(Cells(8, 3), Cells(8, uc))
+        Z.Value = Z.Offset(14, 0).Value
+    Next
+
+'limpando itens excendentes da carteira a ser substituida
+    
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+
+'colocando os pre�os das a��es
+ 
+       
+    For P = 3 To uc
+        Cells(7, P).Formula = "=profitchart|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+'colocando as formulas nas celulas
+   
+    Range(Cells(10, 3), Cells(10, uc)).FormulaR1C1 = "=R[-2]C*R5C3"
+    Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/R[-4]C,0)"
+    Range(Cells(12, 3), Cells(12, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/100,0)*100"
+    Range(Cells(13, 3), Cells(13, uc)).FormulaR1C1 = "=R[-2]C-R[-1]C"
+    Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+    
+'conferindo se o est� 100% alocado nas a��es e caso nao esteja informando ao usuario
+    
+    With Range("A1")
+         .FormulaR1C1 = "=IF(OR(SUM(R8)<>1,SUM(R10)<>R5C3),""ERRO"",""OK"")"
+         x = .Value
+         .ClearContents
+    End With
+    
+If x <> "OK" Then MsgBox ("ERRO !!! Pecentuais e Valores n�o est�o corretos!"), vbCritical: Exit Sub
+
+'mensagem com o valor total da boleta
+        
+    R = Range(Cells(14, 3), Cells(14, uc))
+    RESULTADO = WorksheetFunction.Sum(R)
+
+    MsgBox ("VALOR TOTAL DA BOLETA: R$ " & RESULTADO)
+
+
+'verificar se ja � cliente e se nao for acrescenta na aba de dados
+
+With Sheets("DADOS")
+
+    UL3 = .Range("A1048576").End(xlUp).Row
+        
+        For Each K In Range(.Cells(2, 1), .Cells(UL3, 1))
+            If Range("C4").Value = K Then Exit For
+            If K.Row = UL3 Then
+                K.Offset(1, 0).Value = Range("C4").Value
+                K.Offset(1, 1).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-1],C[9]:C[11],3,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 2).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-2],C11:C16,2,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 3).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-3],C11:C16,5,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 4).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-4],C11:C16,4,FALSE),""ATUALIZAR BASE"")"
+                MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+            End If
+        Next
+End With
+
+'transferindo as informacoes para a aba padrao bull
+
+With Sheets("Padrao_Bull")
+    
+    .Range("A2:R1048576").ClearContents
+    
+    For Each C In Range(Cells(9, 3), Cells(9, uc))
+        If C.Offset(-1, 0).Value <> 0 Then
+           If C.Offset(3, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(3, 0).Value
+              .Range("C" & ul).Value = C.Value
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+           End If
+           If C.Offset(4, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(4, 0).Value
+              .Range("C" & ul).Value = C.Value & "F"
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              
+           End If
+        End If
+    Next
+        
+    Sheets("Padrao_Bull").Select
+    ul = .Range("A1048576").End(xlUp).Row
+    Range("A1:N" & ul).Select
+    Selection.Copy
+    Workbooks.Add
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+    ActiveWorkbook.SaveAs Filename:="C:\Users\Riva Investimentos\Desktop\" & Range("A2").Text & ".csv" _
+        , FileFormat:=xlCSVUTF8, CreateBackup:=False
+ 
+End With
+   
+X_STOP = Now()
+DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+   
+
+End Sub
+
+
+
+Sub SWING()
+
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("B23").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida
+    
+    UCClear = Range("B9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(14, 0).Value
+    Next
+    
+'limpando itens excendentes da carteira a ser substituida
+    
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+
+'colocando os pre�os das a��es
+       
+    For P = 3 To uc
+       Cells(7, P).Formula = "=profitchart|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+
+'limpando as celulas fracionadas
+
+    Range("C13:X13").ClearContents
+    Range("C10:X10").ClearContents
+    Range("C8:X8").ClearContents
+    
+'colocando as formulas nas celulas
+   
+    
+    If Cells(24, 3).Value > 0 Then
+    
+        For K = 3 To uc
+            Cells(12, K).Value = Cells(24, K).Value
+        Next
+        Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=R[1]C"
+        Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+    
+    End If
+        
+'mensagem com o valor total da boleta
+        
+    R = Range(Cells(14, 3), Cells(14, uc))
+    RESULTADO = WorksheetFunction.Sum(R)
+
+    MsgBox ("VALOR TOTAL DA BOLETA: R$ " & RESULTADO)
+
+
+'verificar se ja � cliente e se nao for acrescenta na aba de dados
+
+With Sheets("DADOS")
+
+    UL3 = .Range("A1048576").End(xlUp).Row
+        
+        For Each K In Range(.Cells(2, 1), .Cells(UL3, 1))
+            If Range("C4").Value = K Then Exit For
+            If K.Row = UL3 Then
+                K.Offset(1, 0).Value = Range("C4").Value
+                K.Offset(1, 1).FormulaR1C1 = "=VLOOKUP(RC[-1],C[15]:C[19],3,FALSE)"
+                K.Offset(1, 2).FormulaR1C1 = "=VLOOKUP(RC[-2],C17:C21,2,FALSE)"
+                K.Offset(1, 3).FormulaR1C1 = "=VLOOKUP(RC[-3],C17:C21,5,FALSE)"
+                K.Offset(1, 4).FormulaR1C1 = "=VLOOKUP(RC[-4],C17:C21,4,FALSE)"
+                MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+            End If
+        Next
+End With
+
+
+'transferindo as informacoes para a aba padrao bull
+
+With Sheets("Padrao_Bull")
+    
+    .Range("A2:R1048576").ClearContents
+    
+    For Each C In Range(Cells(9, 3), Cells(9, uc))
+           If C.Offset(3, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(3, 0).Value
+              .Range("C" & ul).Value = C.Value
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = C.Offset(17, 0).Value
+              .Range("J" & ul).Value = C.Offset(18, 0).Value
+              .Range("K" & ul).Value = C.Offset(19, 0).Value
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              .Range("O" & ul).FormulaR1C1 = "=RC[-13]*RC[-7]"
+           End If
+    Next
+        
+    Sheets("Padrao_Bull").Select
+    ul = .Range("A1048576").End(xlUp).Row
+    Range("A1:O" & ul).Select
+    Selection.Copy
+    Workbooks.Add
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+    ActiveWorkbook.SaveAs Filename:="C:\Users\Riva Investimentos\Desktop\" & Range("A2").Text & ".csv" _
+        , FileFormat:=xlCSVUTF8, CreateBackup:=False
+ 
+End With
+   
+X_STOP = Now()
+DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+
+
+
+End Sub
+
+Sub BOLETA()
+
+
+'encontrando ultima coluna da carteira
+
+    uc = Range("B30").End(xlToRight).Column
+
+'encontrando ultima coluna da carteira substituida
+    
+    UCClear = Range("B9").End(xlToRight).Column
+
+'colocando titulos caso alguem delete algo
+
+    Range("B3").Value = "DATA"
+    Range("B4").Value = "CLIENTE"
+    Range("B5").Value = "VALOR"
+    Range("B7").Value = "PRE�O"
+    Range("B8").Value = "ALOCA��O"
+    Range("B9").Value = "COD.A��O"
+    Range("B10").Value = "VALORES"
+    Range("B11").Value = "TOTAL"
+    Range("B12").Value = "INTEIRO"
+    Range("B13").Value = "FRA��O"
+    Range("B14").Value = "$ TOTAL"
+    
+'copiando os codigos das acoes
+
+    For Each Y In Range(Cells(9, 3), Cells(9, uc))
+        Y.Value = Y.Offset(21, 0).Value
+    Next
+    
+'limpando itens excendentes da carteira a ser substituida
+    
+    If UCClear > uc Then
+        For Each Clear In Range(Cells(7, uc + 1), Cells(14, UCClear))
+            Clear.ClearContents
+        Next
+    End If
+
+'colocando os pre�os das a��es
+       
+    For P = 3 To uc
+       Cells(7, P).Formula = "=profitchart|cot!" & Cells(9, P) & ".ULT"
+    Next
+    
+
+'limpando as celulas fracionadas
+
+    Range("C13:X13").ClearContents
+    Range("C10:X10").ClearContents
+    Range("C8:X8").ClearContents
+    
+'colocando as formulas nas celulas
+   
+    
+    If Cells(31, 3).Value > 0 Then
+    
+        For K = 3 To uc
+            Cells(12, K).Value = Cells(24, K).Value
+        Next
+        Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=R[1]C"
+        Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-3]C*R[-7]C"
+    
+    End If
+    
+    If Cells(32, 3).Value > 0 Then
+
+        Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = "=ROUNDDOWN(R[21]C/R[-4]C,0)"
+        Range(Cells(12, 3), Cells(12, uc)).FormulaR1C1 = "=ROUNDDOWN(R[-1]C/100,0)*100 + 100"
+        Range(Cells(12, 3), Cells(12, uc)).Select
+        Selection.Copy
+        Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+        Range(Cells(11, 3), Cells(11, uc)).FormulaR1C1 = ""
+        Range(Cells(14, 3), Cells(14, uc)).FormulaR1C1 = "=R[-2]C*R[-7]C"
+    
+    End If
+    
+    
+'mensagem com o valor total da boleta
+        
+    R = Range(Cells(14, 3), Cells(14, uc))
+    RESULTADO = WorksheetFunction.Sum(R)
+
+    MsgBox ("VALOR TOTAL DA BOLETA: R$ " & RESULTADO)
+
+
+'transferindo o valor aportado para a aba Aportes, caso o cliente ja tenha valor dentro desse produto. Caso seja o primeiro aporte, nao � necess�rio
+
+With Sheets("POS.A")
+
+    ULcl = .Range("A1048576").End(xlUp).Row - 1
+        
+        For Each F In .Range(Cells(5, 1), Cells(ULc1, 1))
+            If Range("C4").Value = F Then
+                Range("B2").Value = 1
+            End If
+        Next
+
+End With
+
+If Range("B2").Value = 1 Then
+    With Sheets("APORTES")
+        ULap = .Range("A1048576").End(xlUp).Row + 1
+        .Range("A" & ULap).Value = Range("C4").Value
+        .Range("B" & ULap).Value = Range("C3").Value
+        .Range("D" & ULap).Value = Range("C5").Value
+        .Range("C" & ULap).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+    End With
+
+End If
+
+Range("B2").ClearContents
+
+
+'verificar se ja � cliente e se nao for acrescenta na aba de dados
+
+With Sheets("DADOS")
+
+    UL3 = .Range("A1048576").End(xlUp).Row
+        
+        For Each K In Range(.Cells(2, 1), .Cells(UL3, 1))
+            If Range("C4").Value = F Then Exit For
+            If K.Row = UL3 Then
+                K.Offset(1, 0).Value = Range("C4").Value
+                K.Offset(1, 1).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-1],C[9]:C[11],3,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 2).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-2],C11:C16,2,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 3).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-3],C11:C16,5,FALSE),""ATUALIZAR BASE"")"
+                K.Offset(1, 4).FormulaR1C1 = "=IFERROR(VLOOKUP(RC[-4],C11:C16,4,FALSE),""ATUALIZAR BASE"")"
+                MsgBox ("NOVO CLIENTE DA MESA - INSERIR POSI��ES EM ABERTO")
+            End If
+        Next
+End With
+
+
+'transferindo as informacoes para a aba padrao bull
+
+With Sheets("Padrao_Bull")
+    
+    .Range("A2:R1048576").ClearContents
+    
+    For Each C In Range(Cells(9, 3), Cells(9, uc))
+           If C.Offset(3, 0).Value <> 0 Then
+              ul = .Range("A1048576").End(xlUp).Row + 1
+              .Range("A" & ul).Value = Range("C4").Value
+              .Range("B" & ul).Value = C.Offset(3, 0).Value
+              .Range("C" & ul).Value = C.Value
+              .Range("D" & ul).Value = "COMPRA"
+              .Range("E" & ul).Value = "LIMITADA"
+              .Range("H" & ul).Value = Round(C.Offset(-2, 0).Value * 1.05, 2)
+              .Range("L" & ul).Value = "HOJE"
+              .Range("N" & ul).Value = "01SEMANA"
+              .Range("O" & ul).FormulaR1C1 = "=RC[-13]*RC[-7]"
+           End If
+    Next
+        
+    Sheets("Padrao_Bull").Select
+    ul = .Range("A1048576").End(xlUp).Row
+    Range("A1:O" & ul).Select
+    Selection.Copy
+    Workbooks.Add
+    
+    ActiveSheet.Paste
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+    ActiveWorkbook.SaveAs Filename:="C:\Users\Riva Investimentos\Desktop\" & Range("A2").Text & ".csv" _
+        , FileFormat:=xlCSVUTF8, CreateBackup:=False
+ 
+End With
+   
+X_STOP = Now()
+DURA��O = Format(X_STOP - X_START, "hh:mm:ss")
+If Val(Mid(DURA��O, 1, 2)) > 0 Then TEMPO = Val(Mid(DURA��O, 1, 2)) & "h " Else TEMPO = ""
+If Val(Mid(DURA��O, 4, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 4, 2)) & "m "
+If Val(Mid(DURA��O, 7, 2)) > 0 Then TEMPO = TEMPO & Val(Mid(DURA��O, 7, 2)) & "s "
+MsgBox "PROCESSO FINALIZADO !!!" & Chr(13) & Chr(13) & "Dura��o...  " & TEMPO, vbExclamation
+
+
+
+End Sub
+
+Sub RETIRADA()
+
+        With Sheets("APORTES")
+            ULap = .Range("A1048576").End(xlUp).Row + 1
+            .Range("A" & ULap).Value = Range("C4").Value
+            .Range("B" & ULap).Value = Range("C3").Value
+            If Range("K3").Value = "VALOR" Then .Range("D" & ULap).Value = Range("C5").Value
+            If Range("K3").Value = "SMALL" Then .Range("E" & ULap).Value = Range("C5").Value
+            If Range("K3").Value = "SWING" Then .Range("G" & ULap).Value = Range("C5").Value
+            .Range("C" & ULap).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+        End With
+
+End Sub
+
+Sub COTACAO_ESTRUTURADA()
+
+    'verifica se tem quantidade de operacoes desejadas e em caso negativo, calcula baseado no valor a ser investido
+    
+    If Cells(32, 4) = "" Then
+        Cells(32, 4).Select
+        ActiveCell.FormulaR1C1 = "=ROUNDDOWN(R[-27]C[-1]/R[-2]C,0)"
+    End If
+    
+    'aloca preco para opcoes caso a informacao adicionada seja apenas o %
+    
+    For Each P In Range("D26:D29")
+        If P > 0 Then P.Offset(0, 1) = P * Cells(30, 4)
+    Next
+        
+    'Call spread
+    
+    If Cells(28, 5) > 0 And Cells(29, 5) > 0 Then
+        'If Cells(28, 5) < Cells(29, 5) Then
+            Cells(35, 2).FormulaR1C1 = "Refer�ncia de pre�o do ativo: R$" & Range("D30").Value & Chr(10) & "Op��o A: Venda de CALL Strike a R$" & Range("E28").Value & Chr(10) & _
+            "Op��o B: Compra de CALL Strike a R$" & Range("E29").Value & Chr(10) & "Fixing da estrutura: " & Range("D31").Value & Chr(10) & "Quantidade: " & Range("D32").Value
+        'End If
+    End If
+
+    'Put spread
+    
+    If Cells(26, 5) > 0 And Cells(27, 5) > 0 Then
+        'If Cells(28, 5) < Cells(29, 5) Then
+            Cells(35, 2).FormulaR1C1 = "Refer�ncia de pre�o do ativo: R$" & Range("D30").Value & Chr(10) & "Op��o A: Venda de PUT Strike a R$" & Range("E26").Value & Chr(10) & _
+            "Op��o B: Compra de PUT Strike a R$" & Range("E27").Value & Chr(10) & "Fixing da estrutura: " & Range("D31").Value & Chr(10) & "Quantidade: " & Range("D32").Value
+        'End If
+    End If
+
+    'Call seca
+    
+    If Cells(28, 5) = 0 And Cells(29, 5) > 0 Then
+        'If Cells(28, 5) < Cells(29, 5) Then
+            Cells(35, 2).FormulaR1C1 = "Refer�ncia de pre�o do ativo: R$" & Range("D30").Value & Chr(10) & _
+            "Compra de CALL Strike a R$" & Range("E29").Value & Chr(10) & "Fixing da estrutura: " & Range("D31").Value & Chr(10) & "Quantidade: " & Range("D32").Value
+        'End If
+    End If
+
+    'Put seca
+    
+    If Cells(28, 5) = 0 And Cells(29, 5) > 0 Then
+        'If Cells(28, 5) < Cells(29, 5) Then
+            Cells(35, 2).FormulaR1C1 = "Refer�ncia de pre�o do ativo: R$" & Range("D30").Value & Chr(10) & _
+            "Compra de CALL Strike a R$" & Range("E29").Value & Chr(10) & "Fixing da estrutura: " & Range("D31").Value & Chr(10) & "Quantidade: " & Range("D32").Value
+        'End If
+    End If
+
+
+End Sub
+
+
+
+Sub banco_de_dados()
+
+
+'transferindo o valor aportado para a aba Aportes, caso o cliente ja tenha valor dentro desse produto. Caso seja o primeiro aporte, nao � necess�rio
+
+'With Sheets("POS.A")
+
+    'ULc1 = .Range("A1048576").End(xlUp).Row - 1
+        
+        'For Each Y In Range(.Cells(5, 1), .Cells(ULc1, 1))
+            'If Range("C4").Value = F Then
+                'Range("B2").Value = 1
+            'End If
+        'Next
+
+'End With
+
+'If Range("B2").Value = 1 Then
+    'With Sheets("APORTES")
+        'ULap = .Range("A1048576").End(xlUp).Row + 1
+        '.Range("A" & ULap).Value = Range("C4").Value
+        '.Range("B" & ULap).Value = Range("C3").Value
+        '.Range("D" & ULap).Value = RESULTADO
+        '.Range("C" & ULap).FormulaR1C1 = "=SUM(RC[1]:RC[7])"
+    'End With
+
+'End If
+
+
+'copia clientes
+
+    Sheets("POS.A").Select
+    UL1 = Range("A1048576").End(xlUp).Row
+    Range(Cells(5, 1), Cells(UL1 - 1, 1)).Copy
+    Sheets("POS.FEC").Select
+    ul = Range("A1048576").End(xlUp).Row
+    Cells(ul + 1, 1).Select
+    ActiveSheet.Paste
+    
+    
+'prenche data e busca todos os valores abertos
+    
+    UL2 = Range("A1048576").End(xlUp).Row
+    
+    For Each D In Range(Cells(ul + 1, 2), Cells(UL2, 2))
+        D.FormulaR1C1 = "=TODAY()"
+    Next
+
+    For Each C In Range(Cells(ul + 1, 3), Cells(UL2, 10))
+        C.FormulaR1C1 = "=IFERROR(INDEX(POS.A!C2:C6,MATCH(RC1,POS.A!C1,0),MATCH(R1C,POS.A!R4C2:R4C6,0)),0)"
+    Next
+
+End Sub
